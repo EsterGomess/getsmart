@@ -1,17 +1,17 @@
 """Note schemas."""
 from datetime import datetime
+from typing import Annotated
 from pydantic import BaseModel, Field
 from app.models.note import NoteType
 from app.schemas.base import BaseSchema
 
 
 class NoteReadSchema(BaseSchema):
-    """Schema for reading a note."""
     id: int
-    title: str
-    content: str
-    source: str | None
-    note_type: NoteType
+    title: Annotated[str, Field(examples=["My Note"])]
+    content: Annotated[str, Field(examples=["Lorem ipsum..."])]
+    source: Annotated[str | None, Field(default=None, examples=["https://..."])]
+    note_type: Annotated[NoteType, Field(examples=["PERMANENT"])]
     user_id: int
     created_at: datetime
     updated_at: datetime
@@ -36,28 +36,28 @@ class NoteLinkReadSchema(BaseSchema):
 class NoteReadDetailedSchema(BaseSchema):
     """Schema for reading a note with its links."""
     id: int
-    title: str
-    content: str
-    source: str | None
-    note_type: NoteType
-    user_id: int
+    title: str | Annotated[str, Field(examples=["My Note"])]
+    content: str | Annotated[str, Field(examples=["This is the content of my note."])]
+    source: str | None | Annotated[str | None, Field(default=None, examples=["https://example.com"])]
+    note_type: NoteType | Annotated[NoteType, Field(examples=[NoteType.PERMANENT])]
+    user_id: int | Annotated[int, Field(examples=[1])]
     created_at: datetime
     updated_at: datetime
     outgoing_links: list[NoteLinkReadSchema] = []
     incoming_links: list[NoteLinkReadSchema] = []
 
 
-class NoteCreateSchema(BaseModel):
+class NoteCreateSchema(BaseSchema):
     """Payload for creating a note."""
-    title: str = Field(..., min_length=1, max_length=255)
-    content: str = Field(..., min_length=1)
-    source: str | None = Field(None, max_length=255)
-    note_type: NoteType = NoteType.FLEETING
+    title: str = Field(..., min_length=1, max_length=255, examples=["My Note"])
+    content: str = Field(..., min_length=1, examples=["This is the content of my note."])
+    source: str | None = Field(None, max_length=255, examples=["https://example.com"])
+    note_type: NoteType = NoteType.PERMANENT
 
 
-class NoteUpdateSchema(BaseModel):
+class NoteUpdateSchema(BaseSchema):
     """Payload for updating a note. All fields are optional."""
-    title: str | None = Field(None, min_length=1, max_length=255)
-    content: str | None = Field(None, min_length=1)
-    source: str | None = Field(None, max_length=255)
+    title: str | None = Field(None, min_length=1, max_length=255, examples=["Updated Note Title"])
+    content: str | None = Field(None, min_length=1, examples=["This is the updated content of my note."])
+    source: str | None = Field(None, max_length=255, examples=["https://updated-example.com"])
     note_type: NoteType | None = None
