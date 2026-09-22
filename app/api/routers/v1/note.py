@@ -18,14 +18,16 @@ from app.services import (
     get_note_for_user,
     create_note_for_user,
     update_note_for_user,
-    delete_note_for_user
+    delete_note_for_user,
+    get_note_graph
 )
 from app.schemas.note import (
     NotesPageSchema,
     NoteReadDetailedSchema,
     NoteCreateSchema,
     NoteReadSchema,
-    NoteUpdateSchema
+    NoteUpdateSchema,
+    NoteGraphSchema,
 )
 
 logger = structlog.get_logger()
@@ -140,3 +142,17 @@ async def update_note(
         payload=payload,
     )
     return NoteReadSchema.model_validate(note)
+
+@router.get(
+    "/graph",
+    status_code=status.HTTP_200_OK,
+    response_model=NoteGraphSchema,
+    summary="Get the full note graph for the current user",
+)
+async def get_graph(
+    db: Annotated[AsyncSession, Depends(get_session)],
+    _client: Annotated[APIClient, Depends(get_current_active_api_client)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> NoteGraphSchema:
+    return await get_note_graph(db=db, user_id=user.id)
+
