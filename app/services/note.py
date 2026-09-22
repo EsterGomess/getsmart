@@ -84,6 +84,8 @@ async def create_note_for_user(
     logger.info("creating_note", user_id=user_id, title=payload.title)
 
     note = await create_note(db=db, user_id=user_id, payload=payload)
+    await db.commit()
+    await db.refresh(note)
 
     logger.info("note_created", user_id=user_id, note_id=note.id)
     return NoteReadSchema.model_validate(note)
@@ -116,6 +118,9 @@ async def update_note_for_user(
             detail="Note not found",
         )
 
+    await db.commit()
+    await db.refresh(note)
+
     logger.info("note_updated", user_id=user_id, note_id=note.id)
     return NoteReadSchema.model_validate(note)
 
@@ -133,6 +138,8 @@ async def delete_note_for_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Note not found",
         )
+
+    await db.commit()
 
     logger.info("note_deleted", user_id=user_id, note_id=note_id)
     return None
