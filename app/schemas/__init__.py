@@ -12,7 +12,10 @@ from app.schemas.note import (
     NoteLinkReadSchema,
     NoteReadDetailedSchema,
     NoteCreateSchema,
-    NoteUpdateSchema
+    NoteUpdateSchema,
+    GraphEdgeSchema,
+    NoteGraphSchema,
+    GraphNodeSchema
 )
 
 __all__ = [
@@ -28,5 +31,8 @@ __all__ = [
     "NoteLinkReadSchema",
     "NoteReadDetailedSchema",
     "NoteCreateSchema",
-    "NoteUpdateSchema"
+    "NoteUpdateSchema",
+    "GraphEdgeSchema",
+    "GraphNodeSchema",
+    "NoteGraphSchema"
 ]
