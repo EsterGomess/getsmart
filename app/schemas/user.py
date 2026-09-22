@@ -5,7 +5,7 @@ from app.schemas.base import BaseSchema
 
 class UserCreateSchema(BaseSchema):
     """Schema for user information."""
-    username: str =  Field(examples=["meu_username"])
+    username: str =  Field(examples=["cool_username"])
     password: SecretStr = Field(
         ...,
         min_length=8,
@@ -20,12 +20,12 @@ class UserCreateSchema(BaseSchema):
 
 class UserResponseCreateSchema(BaseSchema):
     """Schema for user information."""
-    username: str = Field(examples=["meu_username"])
+    username: str = Field(examples=["cool_username"])
 
 
 class UserLoginSchema(BaseSchema):
     """Schema for user login information."""
-    username: str = Field(examples=["meu_username"])
+    username: str = Field(examples=["cool_username"])
     password: SecretStr = Field(
         examples=["Mypassword123!"]
     )
@@ -33,6 +33,6 @@ class UserLoginSchema(BaseSchema):
 
 class UserLoginResponseSchema(BaseSchema):
     """Schema for user login response."""
-    username: str = Field(examples=["meu_username"])
+    username: str = Field(examples=["cool_username"])
     access_token: str = Field(examples=["seu_token_de_acesso"])
     token_type: str = Field(default="bearer", examples=["bearer"])
