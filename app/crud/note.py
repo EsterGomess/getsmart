@@ -4,6 +4,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.note import Note
 from app.schemas import NoteCreateSchema, NoteUpdateSchema
+from app.crud.note_link import sync_links_for_note
 
 
 async def get_notes_paginated_by_user(
@@ -64,9 +65,8 @@ async def create_note(
     )
 
     db.add(note)
-    await db.commit()
-    await db.refresh(note)
-
+    await db.flush()                    # generates note.id via RETURNING
+    await sync_links_for_note(db, note)  # note.user_id used internally
     return note
 
 async def update_note(
@@ -75,7 +75,10 @@ async def update_note(
     note_id: int,
     payload: NoteUpdateSchema,
 ) -> Note | None:
-    """Updates a note for a specific user. Returns None if the note does not exist."""
+    """Update a note. Flushes and re-syncs links. Returns None if not found.
+
+    The caller is responsible for committing the transaction.
+    """
     result = await db.execute(
         select(Note).where(Note.id == note_id, Note.user_id == user_id)
     )
@@ -87,12 +90,20 @@ async def update_note(
     for field, value in update_data.items():
         setattr(note, field, value)
 
-    await db.commit()
-    await db.refresh(note)
+    await db.flush()                    # emits UPDATE, keeps transaction open
+    await sync_links_for_note(db, note)  # rebuilds note_links from content
     return note
 
-async def delete_note(db, user_id, note_id) -> Note | None:
-    """Deletes a note for a specific user. Returns None if the note does not exist."""
+
+async def delete_note(
+    db: AsyncSession,
+    user_id: int,
+    note_id: int,
+) -> Note | None:
+    """Delete a note. Returns None if not found.
+
+    The caller is responsible for committing the transaction.
+    """
     result = await db.execute(
         select(Note).where(Note.id == note_id, Note.user_id == user_id)
     )
@@ -100,5 +111,5 @@ async def delete_note(db, user_id, note_id) -> Note | None:
     if note is None:
         return None
     await db.delete(note)
-    await db.commit()
+    await db.flush()                    # emits DELETE, keeps transaction open
     return note
