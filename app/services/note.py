@@ -11,12 +11,14 @@ from app.crud import (
     get_note_by_user_by_id,
     create_note,
     update_note,
-    delete_note
+    delete_note,
+    get_graph_for_user
 )
 from app.schemas import (
     NoteCreateSchema,
     NoteReadSchema,
     NoteUpdateSchema,
+    NoteGraphSchema
 )
 
 logger = structlog.get_logger()
@@ -143,3 +145,32 @@ async def delete_note_for_user(
 
     logger.info("note_deleted", user_id=user_id, note_id=note_id)
     return None
+
+async def get_note_graph(
+    db: AsyncSession,
+    user_id: int,
+) -> NoteGraphSchema:
+    notes, links = await get_graph_for_user(db, user_id)
+
+    # contagem de links (out + in) por nó, para o tamanho visual
+    counts: dict[int, int] = {n.id: 0 for n in notes}
+    for link in links:
+        counts[link.source_note_id] = counts.get(link.source_note_id, 0) + 1
+        counts[link.target_note_id] = counts.get(link.target_note_id, 0) + 1
+
+    response= {
+        "nodes": [
+            {
+                "id": n.id,
+                "title": n.title,
+                "note_type": n.note_type,
+                "link_count": counts.get(n.id, 0),
+            }
+            for n in notes
+        ],
+        "edges": [
+            {"id": link.id, "source": link.source_note_id, "target": link.target_note_id}
+            for link in links
+        ],
+    }
+    return NoteGraphSchema.model_validate(response)
