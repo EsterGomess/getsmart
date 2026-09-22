@@ -7,7 +7,8 @@ from app.services.note import (
     get_notes_paginated_by_user,
     list_notes_by_user,
     update_note_for_user,
-    delete_note_for_user
+    delete_note_for_user,
+    get_note_graph
 )
 __all__ = [
     "authenticate_api_client",
@@ -19,5 +20,6 @@ __all__ = [
     "get_notes_paginated_by_user",
     "list_notes_by_user",
     "update_note_for_user",
-    "delete_note_for_user"
+    "delete_note_for_user",
+    "get_note_graph"
 ]
