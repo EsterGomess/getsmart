@@ -2,7 +2,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.note import Note
+from app.models.note import Note, NoteLink
 from app.schemas import NoteCreateSchema, NoteUpdateSchema
 from app.crud.note_link import sync_links_for_note
 
@@ -113,3 +113,28 @@ async def delete_note(
     await db.delete(note)
     await db.flush()                    # emits DELETE, keeps transaction open
     return note
+
+
+async def get_graph_for_user(
+    db: AsyncSession,
+    user_id: int,
+) -> tuple[list[Note], list[NoteLink]]:
+    """Return all notes and all links for a user, for graph rendering."""
+    notes_result = await db.execute(
+        select(Note).where(Note.user_id == user_id).order_by(Note.id)
+    )
+    notes = list(notes_result.scalars().all())
+
+    if not notes:
+        return [], []
+
+    note_ids = [n.id for n in notes]
+
+    links_result = await db.execute(
+        select(NoteLink).where(
+            NoteLink.source_note_id.in_(note_ids),
+            NoteLink.target_note_id.in_(note_ids),
+        )
+    )
+    links = list(links_result.scalars().all())
+    return notes, links
