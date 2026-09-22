@@ -5,6 +5,7 @@ This module initializes the FastAPI app, configures settings, and includes API r
 
 from fastapi import FastAPI
 from asgi_correlation_id import CorrelationIdMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.core.logging import setup_logging
@@ -29,6 +30,13 @@ app = FastAPI(
 
 app.middleware("http")(log_requests)
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.get("/health")
 async def health():
     """Check the health of the application."""
