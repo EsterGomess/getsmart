@@ -64,7 +64,7 @@ async def list_notes(
         _client: Annotated[APIClient, Depends(get_current_active_api_client)],
         user: Annotated[User, Depends(get_current_user)],
         page: int = Query(1, ge=1, description="Page number"),
-        page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+        page_size: int = Query(20, ge=1, description="Items per page"),
 ) -> NotesPageSchema:
     """List all notes for the current user, paginated."""
     return await list_notes_by_user(
