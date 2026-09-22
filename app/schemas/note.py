@@ -61,3 +61,21 @@ class NoteUpdateSchema(BaseSchema):
     content: str | None = Field(None, min_length=1, examples=["This is the updated content of my note."])
     source: str | None = Field(None, max_length=255, examples=["https://updated-example.com"])
     note_type: NoteType | None = None
+
+
+class GraphNodeSchema(BaseSchema):
+    id: int
+    title: str
+    note_type: NoteType
+    link_count: int
+
+
+class GraphEdgeSchema(BaseSchema):
+    id: int
+    source: int
+    target: int
+
+
+class NoteGraphSchema(BaseSchema):
+    nodes: list[GraphNodeSchema]
+    edges: list[GraphEdgeSchema]
