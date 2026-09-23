@@ -1,259 +1,300 @@
-## Table of Contents
 
-- [Description](#description)
-- [How to run](#how-to-run)
-  - [Building, running Docker and useful commands](#building-running-docker-and-useful-commands)
-  - [Database](#database)
-- [Diagrams](#diagrams)
-- 
-# 기억공간 - Gieok Gonggan
+# 기억공간 - Gieok Gonggan API
 
-This app is built as my MVP project in my post-degrees
-in PUC – Rio.
+This is the backend API for the Gieok Gonggan application — an MVP project developed
+for a graduate program at PUC-Rio.
 
-The idea became from my studies, I need a way to
-keep my knowledge easily and also keep in my memory.
+The application organizes and retains knowledge using the **Zettelkasten** method
+created by Niklas Luhmann. The API provides authentication, note management, and
+link (graph) operations.
 
-After looking for ways to keep my knowledge easy to find
-and feel less dumped after using IA so much,
-I decide to create this app using Zettelkasten methodology,
-created by Niklas Luhmann.
-
-So I can learn to put what I learn in my postgreSQL,
-and also I can use it to keep my memories easily.
-
-**Enjoy it!**
-
-
-# Description
-
-This project is a web application built using FastAPI, PostgreSQL, and Docker. 
-It serves as a knowledge management system based on the Zettelkasten methodology, allowing users to store, organize, and retrieve their knowledge efficiently.
 ---
 
-# How to run
-This project is built using Python 3.11, FastAPI, PostgreSQL, and Docker.
+## Table of Contents
 
-## Building, running Docker and useful commands
+- [Overview and Structure](#overview-and-structure)
+- [Prerequisites](#prerequisites)
+- [Environment Variables](#environment-variables)
+- [Running Locally](#running-locally)
+- [Database Migrations](#database-migrations)
+- [Seeding the Database](#seeding-the-database)
+- [Running with Docker](#running-with-docker)
+  - [Production Mode](#production-mode)
+  - [Development Mode](#development-mode)
+  - [Useful Docker Commands](#useful-docker-commands)
+- [API Documentation](#api-documentation)
+- [Authentication](#authentication)
 
-The application runs using Docker and Docker Compose.
-The commands below can be used to build, start, stop, restart, inspect, and debug the application containers.
+---
 
-### Build the Docker image
+## Overview and Structure
 
-Build the application Docker image:
-
-```bash
-docker build -t gonggan .
+```text
+gieokgonggan/                          ← backend root
+├── app/                               ← FastAPI source code
+│   ├── api/routers/v1/                ← HTTP routes
+│   ├── core/                          ← security, config
+│   ├── crud/                          ← database access
+│   ├── models/                        ← SQLAlchemy models
+│   ├── schemas/                       ← Pydantic schemas
+│   ├── services/                      ← business logic
+│   └── main.py                        ← app entrypoint
+├── alembic/                           ← database migrations
+│   ├── versions/                      ← migration files
+│   └── env.py
+├── scripts/                           ← seed and utility scripts
+│   ├── create_api_client.py           ← creates the default APIClient
+│   └── entrypoint.sh                  ← waits for DB, runs migrations
+├── tests/                             ← test suite
+├── Dockerfile                         ← multi-stage (builder + runtime)
+├── docker-compose.yml                 ← base (production)
+├── docker-compose.override.yml        ← development (volumes, reload)
+├── docker-compose.prod.yml            ← production overrides
+├── alembic.ini
+├── requirements.txt
+└── .env                               ← NOT copied into the container
 ```
 
-Rebuild the application image using Docker Compose:
+---
+
+## Prerequisites
+
+- [Python](https://www.python.org/) (version 3.12+ recommended)
+- [pip](https://pip.pypa.io/) or an equivalent package manager
+- [PostgreSQL](https://www.postgresql.org/) (version 16+ recommended)
+- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) (if running via containers)
+
+---
+
+## Environment Variables
+
+Create a `.env` file at the project root based on `.env.example`:
 
 ```bash
-docker compose build
+cp .env.example .env
 ```
 
-Rebuild the image without using the Docker cache:
+Available settings:
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | Async PostgreSQL connection string | `postgresql+asyncpg://user:pass@db:5432/gieokgonggan` |
+| `DATABASE_URL_SYNC` | Sync connection string (used by Alembic) | `postgresql+psycopg2://user:pass@db:5432/gieokgonggan` |
+| `POSTGRES_USER` | PostgreSQL username | `postgres` |
+| `POSTGRES_PASSWORD` | PostgreSQL password | `postgres` |
+| `POSTGRES_DB` | PostgreSQL database name | `gieokgonggan` |
+| `SECRET_KEY` | JWT signing key (min 32 bytes) | - |
+| `ALGORITHM` | JWT algorithm | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT lifetime in minutes | `30` |
+| `OPENAI_API_KEY` | OpenAI API key (used by the AI suggestion feature) | - |
+| `ENV` | Environment name (`development` / `production`) | `development` |
+
+> ⚠️ **Note:** The `.env` file is not copied into the Docker image for security reasons
+> (listed in `.dockerignore`). In production/Docker, pass the variables through
+> `docker-compose` or the command line.
+
+---
+
+## Running Locally
+
+### 1. Create a virtual environment
 
 ```bash
-docker compose build --no-cache
+python -m venv .venv
+source .venv/bin/activate      # Linux/macOS
+# or
+.venv\Scripts\activate         # Windows PowerShell
 ```
 
-### Start the application
-
-Start the containers:
+### 2. Install dependencies
 
 ```bash
-docker compose up
+pip install -r requirements.txt
 ```
 
-
-Build the images and start the containers:
+### 3. Start the development server
 
 ```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The API will be available at [http://localhost:8000](http://localhost:8000).
+
+### 4. Production-style run
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+---
+
+## Database Migrations
+
+Migrations are managed by Alembic. All commands must run **inside the container** or
+with the virtual environment active.
+
+### Apply pending migrations
+
+```bash
+alembic upgrade head
+```
+
+### Create a new migration
+
+```bash
+alembic revision --autogenerate -m "describe your change"
+```
+
+> ⚠️ Always review the generated file in `alembic/versions/` before applying.
+> Autogenerate doesn't detect every change (e.g., enum modifications, column renames).
+
+### Roll back one migration
+
+```bash
+alembic downgrade -1
+```
+
+### See the current revision
+
+```bash
+alembic current
+```
+
+---
+
+## Seeding the Database
+
+The application requires at least one **APIClient** to be able to authenticate
+external applications (like the frontend). Use the seed script:
+
+```bash
+docker compose exec app python -m scripts.create_api_client
+```
+
+Default credentials created:
+
+| Field | Value |
+| :--- | :--- |
+| Username | `admin` |
+| Password | `admin` |
+
+> ⚠️ Change these credentials in production. The seed script is meant for local
+> development and testing only.
+
+To create a human **User** account, use the `/api/v1/customers/register` endpoint
+(requires APIClient authentication first).
+
+---
+
+## Running with Docker
+
+### Production Mode
+
+The project uses a multi-stage image (`builder` ➔ `runtime`) to keep the final
+image light. The `entrypoint.sh` waits for the database, runs migrations, and
+starts the application.
+
+To bring the stack up in production:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+The API will be available at [http://localhost:8000](http://localhost:8000).
+
+To run the API directly via the Docker CLI:
+
+```bash
+# Build the image
+docker build -t gieok-gonggan-api .
+
+# Run the container (requires an external Postgres)
+docker run -p 8000:8000 --env-file .env gieok-gonggan-api
+```
+
+---
+
+### Development Mode
+
+For development with volume sync, hot reload, and automatic migrations on startup:
+
+```bash
+# Docker Compose automatically merges docker-compose.override.yml
 docker compose up --build
 ```
 
-Run the database migrations after starting the containers:
-```bash
-docker compose exec app alembic upgrade head
-```
+The `entrypoint.sh` handles:
 
-### Stop and remove containers
-
-```bash
-docker compose stop
-```
-
-Stop and remove the containers:
-
-```bash
-docker compose down
-```
-
-Stop and remove the containers and volumes:
-
-```bash
-docker compose down -v
-```
-
-> **Warning:** `docker compose down -v` removes the Docker volumes, including the PostgreSQL database data.
-
-### Restart containers
-
-Restart all running containers:
-
-```bash
-docker compose restart
-```
-
-Restart only the application container:
-
-```bash
-docker compose restart app
-```
-
-Restart only the database container:
-
-```bash
-docker compose restart db
-```
-
-### Check container status
-
-Show the status of the running containers:
-
-```bash
-docker compose ps
-```
-
-Show the status of all containers, including stopped containers:
-
-```bash
-docker compose ps -a
-```
-
-### View container logs
-
-View the application logs:
-
-```bash
-docker compose logs app
-```
-
-View the application logs in real time:
-
-```bash
-docker compose logs -f app
-```
-
-View the database logs:
-
-```bash
-docker compose logs db
-```
-
-View the database logs in real time:
-
-```bash
-docker compose logs -f db
-```
-
-View the logs of all containers in real time:
-
-```bash
-docker compose logs -f
-```
-
-### Access the application container
-
-Open a shell inside the application container:
-
-```bash
-docker compose exec app sh
-```
-
-Check the Python version inside the container:
-
-```bash
-docker compose exec app python --version
-```
-
-### Access PostgreSQL
-
-Open a PostgreSQL shell inside the database container:
-
-```bash
-docker compose exec db psql -U fastapi_user -d fastapi_db
-```
-
-
-### Access the application
-
-Once the containers are running, the application is available at:
-
-`http://127.0.0.1:8000`
-
-The FastAPI documentation is available at:
-
-`http://127.0.0.1:8000/docs`
-
-The ReDoc documentation is available at:
-
-`http://127.0.0.1:8000/redoc`
-
-The application health check is available at:
-
-`http://127.0.0.1:8000/health`
+1. Waiting for DNS resolution of the database host.
+2. Running `alembic upgrade head`.
+3. Starting `uvicorn` with `--reload`.
 
 ---
 
-## Database
+### Useful Docker Commands
 
-The application uses a PostgreSQL database.
-
-### Shows the current revision of the database
-
-```bash
-docker compose exec app alembic current
-```
-
-### Shows the history of the database migrations
-
-```bash
-docker compose exec app alembic history
-```
-
-### Shows the current revision of the database
-
-```bash
-docker compose exec app alembic current
-```
-
-### Shows the latest revision of the database
-
-```bash
-docker compose exec app alembic heads
-```
-
-### upgrades the database to the latest revision
-
-```bash
-docker compose exec app alembic upgrade head
-```
-
-### Creates a new migration file
-
-```bash
-docker compose exec app alembic revision --autogenerate -m "description of the migration"
-```
-
-### Apply the migration to the database
-
-```bash
-docker compose exec app alembic upgrade head  
-```
+| Action | Command |
+| :--- | :--- |
+| **Start services in the background** | `docker compose up -d` |
+| **Rebuild and start images** | `docker compose up --build` |
+| **Stop the containers** | `docker compose down` |
+| **Stop and remove volumes** | `docker compose down -v` |
+| **View logs in real time** | `docker compose logs -f app` |
+| **Access the container shell** | `docker compose exec app bash` |
+| **Check container status** | `docker compose ps` |
+| **Connect to the database** | `docker compose exec db psql -U postgres -d gieokgonggan` |
+| **Run a migration** | `docker compose exec app alembic upgrade head` |
+| **Seed the APIClient** | `docker compose exec app python -m scripts.create_api_client` |
 
 ---
 
-# Diagrams
+## API Documentation
+
+Once running, the API exposes interactive documentation:
+
+| Interface | URL |
+| :--- | :--- |
+| **Swagger UI** | [http://localhost:8000/docs](http://localhost:8000/docs) |
+| **ReDoc** | [http://localhost:8000/redoc](http://localhost:8000/redoc) |
+| **OpenAPI JSON** | [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json) |
+
+### Main endpoints
+
+| Method | Path | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/token` | Authenticate an APIClient and receive a JWT |
+| `POST` | `/api/v1/customers/register` | Register a new human User (requires APIClient) |
+| `POST` | `/api/v1/customers/login` | Log a User in and receive a JWT |
+| `GET` | `/api/v1/notes/list` | List notes with pagination |
+| `GET` | `/api/v1/notes/note/{id}` | Get a single note with its links |
+| `POST` | `/api/v1/notes/create` | Create a note |
+| `PATCH` | `/api/v1/notes/note/{id}` | Update a note |
+| `DELETE` | `/api/v1/notes/note/{id}` | Delete a note |
+| `GET` | `/api/v1/notes/graph` | Get the full note graph (nodes + edges) |
+| `GET` | `/health` | Health check |
+
+---
+
+## Authentication
+
+The API uses **two independent JWT layers**:
+
+| Layer | Purpose | Header | Endpoint |
+| :--- | :--- | :--- | :--- |
+| **APIClient** | Identifies the application (e.g., the frontend) | `Authorization: Bearer <token>` | `POST /api/v1/auth/token` |
+| **User** | Identifies the human behind the request | `X-User-Token: <jwt>` | `POST /api/v1/customers/login` |
+
+### Flow
+
+```text
+1. Frontend → POST /api/v1/auth/token (APIClient credentials)
+             ← { access_token }
+
+2. Frontend → POST /api/v1/customers/login (User credentials + APIClient token)
+             ← { access_token }
+
+3. Frontend → GET /api/v1/notes/list
+             Headers:
+               Authorization: Bearer <api_client_token>
+               X-User-Token:  <user_token>
+             ← { items, total, page, ... }
