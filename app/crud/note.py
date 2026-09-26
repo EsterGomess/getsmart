@@ -138,3 +138,30 @@ async def get_graph_for_user(
     )
     links = list(links_result.scalars().all())
     return notes, links
+
+
+async def get_candidate_notes(
+    db: AsyncSession,
+    user_id: int,
+    exclude_note_id: int | None = None,
+    limit: int = 40,
+) -> list[Note]:
+    """
+    Fetch the most recent notes for a user, optionally excluding one.
+
+    Used to build the candidate list for AI connection suggestions.
+    Returns the notes ordered by creation date (newest first).
+    """
+    stmt = (
+        select(Note)
+        .where(Note.user_id == user_id)
+        .order_by(Note.created_at.desc())
+        .limit(limit)
+    )
+
+    if exclude_note_id is not None:
+        stmt = stmt.where(Note.id != exclude_note_id)
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
