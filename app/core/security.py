@@ -44,8 +44,13 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, token_type: str = "api_client") -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
+    expiration_minutes = (
+        settings.API_CLIENT_ACCESS_TOKEN_EXPIRE_MINUTES
+        if token_type == "api_client"
+        else settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
     expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        minutes=expiration_minutes
     )
     to_encode.update({"exp": expire, "type": token_type})
     return jwt.encode(
