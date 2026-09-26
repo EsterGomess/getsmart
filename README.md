@@ -17,6 +17,7 @@ link (graph) operations.
 - [Environment Variables](#environment-variables)
 - [Running Locally](#running-locally)
 - [Database Migrations](#database-migrations)
+- [Running Tests](#running-tests)
 - [Seeding the Database](#seeding-the-database)
 - [Running with Docker](#running-with-docker)
   - [Production Mode](#production-mode)
@@ -162,6 +163,29 @@ alembic current
 
 ---
 
+## Running Tests
+
+The test suite uses the PostgreSQL database configured for the project. Start the
+database, apply migrations, then run pytest inside the application container:
+
+```bash
+docker compose build app
+docker compose run --rm app alembic upgrade head
+docker compose run --rm app python -m pytest
+```
+
+To run one test module:
+
+```bash
+docker compose run --rm app python -m pytest tests/services/test_auth.py
+docker compose run --rm app python -m pytest tests/services/test_notes_ai.py
+```
+
+The database fixture rolls back test changes at the end of each test. The
+`notes_ai` tests mock the Gemini client and do not call the external API.
+
+---
+
 ## Seeding the Database
 
 The application requires at least one **APIClient** to be able to authenticate
@@ -244,6 +268,9 @@ The `entrypoint.sh` handles:
 | **Check container status** | `docker compose ps` |
 | **Connect to the database** | `docker compose exec db psql -U postgres -d gieokgonggan` |
 | **Run a migration** | `docker compose exec app alembic upgrade head` |
+| **Run all tests** | `docker compose run --rm app python -m pytest` |
+| **Run authentication tests** | `docker compose run --rm app python -m pytest tests/services/test_auth.py` |
+| **Run notes AI tests** | `docker compose run --rm app python -m pytest tests/services/test_notes_ai.py` |
 | **Seed the APIClient** | `docker compose exec app python -m scripts.create_api_client` |
 
 ---
