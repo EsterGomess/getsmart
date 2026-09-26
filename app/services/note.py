@@ -83,7 +83,7 @@ async def create_note_for_user(
     :param user_id: The ID of the user.
     :param payload: The note creation payload.
     :return: The created note."""
-    logger.info("creating_note", user_id=user_id, title=payload.title)
+    logger.info("creating_note", user_id=user_id)
 
     note = await create_note(db=db, user_id=user_id, payload=payload)
     await db.commit()
@@ -152,13 +152,12 @@ async def get_note_graph(
 ) -> NoteGraphSchema:
     notes, links = await get_graph_for_user(db, user_id)
 
-    # contagem de links (out + in) por nó, para o tamanho visual
     counts: dict[int, int] = {n.id: 0 for n in notes}
     for link in links:
         counts[link.source_note_id] = counts.get(link.source_note_id, 0) + 1
         counts[link.target_note_id] = counts.get(link.target_note_id, 0) + 1
 
-    response= {
+    response = {
         "nodes": [
             {
                 "id": n.id,
