@@ -19,15 +19,18 @@ from app.services import (
     create_note_for_user,
     update_note_for_user,
     delete_note_for_user,
-    get_note_graph
+    get_note_graph,
+    suggest_connections
 )
-from app.schemas.note import (
+from app.schemas import (
     NotesPageSchema,
     NoteReadDetailedSchema,
     NoteCreateSchema,
     NoteReadSchema,
     NoteUpdateSchema,
     NoteGraphSchema,
+    SuggestConnectionsRequest,
+    SuggestionsSchema
 )
 
 logger = structlog.get_logger()
@@ -106,10 +109,10 @@ async def get_note_detail(
     responses={404: {"description": "Note not found"}},
 )
 async def delete_note(
-    note_id: int,
-    db: Annotated[AsyncSession, Depends(get_session)],
-    _client: Annotated[APIClient, Depends(get_current_active_api_client)],
-    user: Annotated[User, Depends(get_current_user)],
+        note_id: int,
+        db: Annotated[AsyncSession, Depends(get_session)],
+        _client: Annotated[APIClient, Depends(get_current_active_api_client)],
+        user: Annotated[User, Depends(get_current_user)],
 ) -> Response:
     """Delete a note by its ID (scoped to the current user)."""
     await delete_note_for_user(
@@ -143,6 +146,7 @@ async def update_note(
     )
     return NoteReadSchema.model_validate(note)
 
+
 @router.get(
     "/graph",
     status_code=status.HTTP_200_OK,
@@ -150,9 +154,28 @@ async def update_note(
     summary="Get the full note graph for the current user",
 )
 async def get_graph(
-    db: Annotated[AsyncSession, Depends(get_session)],
-    _client: Annotated[APIClient, Depends(get_current_active_api_client)],
-    user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[AsyncSession, Depends(get_session)],
+        _client: Annotated[APIClient, Depends(get_current_active_api_client)],
+        user: Annotated[User, Depends(get_current_user)],
 ) -> NoteGraphSchema:
     return await get_note_graph(db=db, user_id=user.id)
 
+
+@router.post(
+    "/suggest-connections",
+    status_code=status.HTTP_200_OK,
+    response_model=SuggestionsSchema,
+)
+async def suggest_connections_endpoint(
+        payload: SuggestConnectionsRequest,
+        db: Annotated[AsyncSession, Depends(get_session)],
+        _client: Annotated[APIClient, Depends(get_current_active_api_client)],
+        user: Annotated[User, Depends(get_current_user)],
+) -> SuggestionsSchema:
+    """Suggest connections based on the provided title and content."""
+    return await suggest_connections(
+        db=db,
+        user_id=user.id,
+        title=payload.title,
+        content=payload.content
+    )
