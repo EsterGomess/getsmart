@@ -10,6 +10,7 @@ from app.services.note import (
     delete_note_for_user,
     get_note_graph
 )
+from app.services.notes_ai import suggest_connections
 __all__ = [
     "authenticate_api_client",
     "authenticate_user",
@@ -21,5 +22,6 @@ __all__ = [
     "list_notes_by_user",
     "update_note_for_user",
     "delete_note_for_user",
-    "get_note_graph"
+    "get_note_graph",
+    "suggest_connections"
 ]
