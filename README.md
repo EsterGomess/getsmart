@@ -45,7 +45,6 @@ gieokgonggan/                          ← backend root
 │   └── env.py
 ├── scripts/                           ← seed and utility scripts
 │   ├── create_api_client.py           ← creates the default APIClient
-│   └── entrypoint.sh                  ← waits for DB, runs migrations
 ├── tests/                             ← test suite
 ├── Dockerfile                         ← multi-stage (builder + runtime)
 ├── docker-compose.yml                 ← base (production)
@@ -215,8 +214,9 @@ To create a human **User** account, use the `/api/v1/customers/register` endpoin
 ### Production Mode
 
 The project uses a multi-stage image (`builder` ➔ `runtime`) to keep the final
-image light. The `entrypoint.sh` waits for the database, runs migrations, and
-starts the application.
+image light. In production, Compose starts the `migration` service after the
+database healthcheck passes. The application starts after that service finishes
+successfully.
 
 To bring the stack up in production:
 
@@ -240,18 +240,17 @@ docker run -p 8000:8000 --env-file .env gieok-gonggan-api
 
 ### Development Mode
 
-For development with volume sync, hot reload, and automatic migrations on startup:
+For development with source volume sync, hot reload, and migrations on startup:
 
 ```bash
 # Docker Compose automatically merges docker-compose.override.yml
 docker compose up --build
 ```
 
-The `entrypoint.sh` handles:
-
-1. Waiting for DNS resolution of the database host.
-2. Running `alembic upgrade head`.
-3. Starting `uvicorn` with `--reload`.
+The base Compose file waits for the PostgreSQL healthcheck before starting the
+application. The development override runs `alembic upgrade head`, then starts
+Uvicorn with `--reload`. These commands are configured directly in
+`docker-compose.override.yml`; the project does not use an `entrypoint.sh`.
 
 ---
 
