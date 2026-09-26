@@ -1,7 +1,9 @@
 """Note schemas."""
 from datetime import datetime
 from typing import Annotated
-from pydantic import BaseModel, Field
+
+from pydantic import Field
+
 from app.models.note import NoteType
 from app.schemas.base import BaseSchema
 
@@ -10,7 +12,7 @@ class NoteReadSchema(BaseSchema):
     id: int
     title: Annotated[str, Field(examples=["My Note"])]
     content: Annotated[str, Field(examples=["Lorem ipsum..."])]
-    source: Annotated[str | None, Field(default=None, examples=["https://..."])]
+    source: Annotated[str | None, Field(examples=["https://..."])] = None
     note_type: Annotated[NoteType, Field(examples=["PERMANENT"])]
     user_id: int
     created_at: datetime
@@ -36,11 +38,11 @@ class NoteLinkReadSchema(BaseSchema):
 class NoteReadDetailedSchema(BaseSchema):
     """Schema for reading a note with its links."""
     id: int
-    title: str | Annotated[str, Field(examples=["My Note"])]
-    content: str | Annotated[str, Field(examples=["This is the content of my note."])]
-    source: str | None | Annotated[str | None, Field(default=None, examples=["https://example.com"])]
-    note_type: NoteType | Annotated[NoteType, Field(examples=[NoteType.PERMANENT])]
-    user_id: int | Annotated[int, Field(examples=[1])]
+    title: Annotated[str, Field(examples=["My Note"])]
+    content: Annotated[str, Field(examples=["This is the content of my note."])]
+    source: Annotated[str | None, Field(examples=["https://example.com"])] = None
+    note_type: Annotated[NoteType, Field(examples=[NoteType.PERMANENT])]
+    user_id: Annotated[int, Field(examples=[1])]
     created_at: datetime
     updated_at: datetime
     outgoing_links: list[NoteLinkReadSchema] = []
