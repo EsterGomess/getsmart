@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ENV: str = "development"
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 43_200
+    API_CLIENT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 43_200
     ALGORITHM: str = "HS256"
     DB_ECHO: bool = False
     DB_POOL_SIZE: int = 10
