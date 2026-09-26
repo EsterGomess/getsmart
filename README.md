@@ -85,7 +85,8 @@ Available settings:
 | `POSTGRES_DB` | PostgreSQL database name | `gieokgonggan` |
 | `SECRET_KEY` | JWT signing key (min 32 bytes) | - |
 | `ALGORITHM` | JWT algorithm | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT lifetime in minutes | `30` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | User JWT lifetime in minutes | `43200` (30 days) |
+| `API_CLIENT_ACCESS_TOKEN_EXPIRE_MINUTES` | APIClient JWT lifetime in minutes | `43200` (30 days) |
 | `OPENAI_API_KEY` | OpenAI API key (used by the AI suggestion feature) | - |
 | `ENV` | Environment name (`development` / `production`) | `development` |
 
@@ -187,22 +188,28 @@ The database fixture rolls back test changes at the end of each test. The
 
 ## Seeding the Database
 
-The application requires at least one **APIClient** to be able to authenticate
-external applications (like the frontend). Use the seed script:
+The API requires an **APIClient** to authenticate callers. Create a client with
+the interactive prompt; the password is hidden while you type and must have at
+least 16 characters:
 
 ```bash
-docker compose exec app python -m scripts.create_api_client
+docker compose exec -it app python -m scripts.create_api_client
 ```
 
-Default credentials created:
+The script can also read `API_CLIENT_USERNAME` and `API_CLIENT_PASSWORD` from its
+environment for automated one-time setup. Do not commit these values or leave
+them in a public client bundle. The script stores only a password hash and refuses
+to replace a client with the same username.
 
-| Field | Value |
-| :--- | :--- |
-| Username | `admin` |
-| Password | `admin` |
+For a frontend deployed on Vercel, store the client credentials as server-side
+environment variables and have server-side functions call this API. Do not use
+the `NEXT_PUBLIC_` prefix or send the shared client password or APIClient token
+to browser code. The Vercel server-side layer must keep the APIClient token private
+and forward authenticated requests to the FastAPI service.
 
-> ⚠️ Change these credentials in production. The seed script is meant for local
-> development and testing only.
+> ⚠️ This repository contains the FastAPI backend, not the Vercel frontend proxy.
+> The APIClient has access to the protected API routes, so use a dedicated strong
+> credential for each deployed client and rotate it if it is exposed.
 
 To create a human **User** account, use the `/api/v1/customers/register` endpoint
 (requires APIClient authentication first).
