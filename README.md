@@ -23,6 +23,7 @@ link (graph) operations.
   - [Production Mode](#production-mode)
   - [Development Mode](#development-mode)
   - [Useful Docker Commands](#useful-docker-commands)
+- [Deploying to Vercel](#deploying-to-vercel)
 - [API Documentation](#api-documentation)
 - [Authentication](#authentication)
 
@@ -51,6 +52,7 @@ gieokgonggan/                          ← backend root
 ├── docker-compose.override.yml        ← development (volumes, reload)
 ├── docker-compose.prod.yml            ← production overrides
 ├── alembic.ini
+├── pyproject.toml                      ← Vercel FastAPI entrypoint
 ├── requirements.txt
 └── .env                               ← NOT copied into the container
 ```
@@ -78,16 +80,19 @@ Available settings:
 
 | Variable | Description | Default |
 | :--- | :--- | :--- |
-| `DATABASE_URL` | Async PostgreSQL connection string | `postgresql+asyncpg://user:pass@db:5432/gieokgonggan` |
-| `DATABASE_URL_SYNC` | Sync connection string (used by Alembic) | `postgresql+psycopg2://user:pass@db:5432/gieokgonggan` |
-| `POSTGRES_USER` | PostgreSQL username | `postgres` |
-| `POSTGRES_PASSWORD` | PostgreSQL password | `postgres` |
-| `POSTGRES_DB` | PostgreSQL database name | `gieokgonggan` |
+| `DATABASE_URL` | Async PostgreSQL connection string; accepts provider URLs and selects `asyncpg` | - |
+| `DATABASE_URL_SYNC` | Sync PostgreSQL connection string for Alembic; selects `psycopg2` | Derived from `DATABASE_URL` if omitted |
+| `POSTGRES_USER` | PostgreSQL username when not using `DATABASE_URL` | Required with `POSTGRES_PASSWORD` and `POSTGRES_DB` |
+| `POSTGRES_PASSWORD` | PostgreSQL password when not using `DATABASE_URL` | Required with `POSTGRES_USER` and `POSTGRES_DB` |
+| `POSTGRES_DB` | PostgreSQL database name when not using `DATABASE_URL` | Required with `POSTGRES_USER` and `POSTGRES_PASSWORD` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed by CORS | `http://localhost:3000` |
+| `DB_POOL_SIZE` | SQLAlchemy connections kept per instance | `1` |
+| `DB_MAX_OVERFLOW` | Extra SQLAlchemy connections per instance | `0` |
 | `SECRET_KEY` | JWT signing key (min 32 bytes) | - |
 | `ALGORITHM` | JWT algorithm | `HS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | User JWT lifetime in minutes | `43200` (30 days) |
 | `API_CLIENT_ACCESS_TOKEN_EXPIRE_MINUTES` | APIClient JWT lifetime in minutes | `43200` (30 days) |
-| `OPENAI_API_KEY` | OpenAI API key (used by the AI suggestion feature) | - |
+| `GEMINI_API_KEY` | Google Gemini API key (used by the AI suggestion feature) | - |
 | `ENV` | Environment name (`development` / `production`) | `development` |
 
 > ⚠️ **Note:** The `.env` file is not copied into the Docker image for security reasons
@@ -278,6 +283,41 @@ Uvicorn with `--reload`. These commands are configured directly in
 | **Run authentication tests** | `docker compose run --rm app python -m pytest tests/services/test_auth.py` |
 | **Run notes AI tests** | `docker compose run --rm app python -m pytest tests/services/test_notes_ai.py` |
 | **Seed the APIClient** | `docker compose exec app python -m scripts.create_api_client` |
+
+---
+
+## Deploying to Vercel
+
+The FastAPI application is exported from `app.main:app`; `pyproject.toml` tells
+Vercel to use that entrypoint. Vercel runs it as a Python Function, so the Docker
+Compose services and startup commands are not used for this deployment.
+
+1. Import this repository into Vercel using the repository root as the project
+   root.
+2. Add a PostgreSQL provider from the Vercel Marketplace, such as Neon. Set
+   `DATABASE_URL` to its pooled connection URL and `DATABASE_URL_SYNC` to its
+   direct/unpooled URL for Alembic. Both URLs can use standard `postgresql://`
+   provider formats; the application selects the required SQLAlchemy drivers.
+3. Configure Production environment variables in Vercel: `ENV=production`, a
+   strong `SECRET_KEY`, both database URLs, and `GEMINI_API_KEY` if AI suggestions
+   are enabled. Set `CORS_ALLOWED_ORIGINS` to the exact frontend origin(s),
+   separated by commas, only if the browser calls this API directly.
+4. Link the project locally with the Vercel CLI, install the Python dependencies,
+   then apply the production database migrations before deploying:
+
+   ```bash
+   vercel link
+   pip install -r requirements.txt
+   vercel env run -e production -- alembic upgrade head
+   ```
+
+5. Deploy with `vercel --prod` or push to the connected production branch.
+
+Keep APIClient credentials and tokens in server-side code. The browser must not
+receive the shared APIClient password or bearer token. This repository contains
+the API, so a frontend that needs the APIClient token should proxy its API calls
+through server-side functions. The Python runtime on Vercel is currently in beta;
+review its function and Hobby plan limits before relying on it for important data.
 
 ---
 
