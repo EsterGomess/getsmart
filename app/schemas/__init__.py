@@ -17,7 +17,11 @@ from app.schemas.note import (
     NoteGraphSchema,
     GraphNodeSchema
 )
-
+from app.schemas.notes_ai import (
+    SuggestConnectionsRequest,
+    ConnectionSuggestion,
+    SuggestionsSchema
+)
 __all__ = [
     "Token",
     "TokenData",
@@ -34,5 +38,8 @@ __all__ = [
     "NoteUpdateSchema",
     "GraphEdgeSchema",
     "GraphNodeSchema",
-    "NoteGraphSchema"
+    "NoteGraphSchema",
+    "SuggestConnectionsRequest",
+    "ConnectionSuggestion",
+    "SuggestionsSchema"
 ]
