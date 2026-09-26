@@ -7,11 +7,11 @@ class SuggestConnectionsRequest(BaseSchema):
     """Request schema for suggesting connections."""
     title: str = Field(..., min_length=1,
                        max_length=255,
-                       example="Example title"
+                       json_schema_extra={"example": "Example title"}
                        )
     content: str = Field(..., min_length=10,
                          max_length=20_000,
-                         example="Example content"
+                         json_schema_extra={"example": "Example content"}
                          )
 
 
@@ -19,11 +19,11 @@ class ConnectionSuggestion(BaseSchema):
     """Schema for a single connection suggestion."""
     title: str = Field(..., min_length=1,
                        max_length=255,
-                       example="Example title"
+                       json_schema_extra={"example": "Example title"}
                        )
     reason: str = Field(..., min_length=1,
                         max_length=255,
-                        example="Example reason"
+                        json_schema_extra={"example": "Example reason"}
                         )
 
 
